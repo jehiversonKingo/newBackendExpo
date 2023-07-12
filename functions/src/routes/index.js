@@ -6,11 +6,11 @@ const moment = require('moment');
 
 const connection = require('../models/datos');
 const credential = {
-  host: '35.226.160.155',
+  host: '10.54.128.2',
   user: 'root',
   password: 'UmCYXM9=J=C}jh7+',
-  database: 'kinqoenergy',
-}
+  database: 'kinqoenergy'
+} 
 const transporter = nodemailer.createTransport({
   // Configuración del servicio de correo electrónico (por ejemplo, Gmail)
   service: 'gmail',
@@ -23,7 +23,7 @@ router.post('/enviar-correo', (req, res) => {
   const { email, subject, body } = req.body;
    // Configuración del correo electrónico
    const mailOptions = {
-    from: 'tu_correo@gmail.com', // Debes usar el mismo correo configurado en nodemailer
+    from: 'programacionprueba003@gmail.com', // Debes usar el mismo correo configurado en nodemailer
     to: email,
     subject: subject,
     text: body,
@@ -39,19 +39,48 @@ router.post('/enviar-correo', (req, res) => {
     }
   });
 });
+router.get('/diasvacaciones/:iduser', (req, res) => {
+  const idUser = req.params.iduser
 
+  // Realizar la consulta en la base de datos para obtener los días de vacaciones del usuario específico
+  const query = `SELECT days, daysgozados FROM diasvacaciones WHERE iduser = ?`
+  connection.query(query, [idUser], (error, results) => {
+    if (error) {
+      console.error('Error al obtener los días de vacaciones:', error)
+      res.status(500).json({ error: 'Error al obtener los días de vacaciones' })
+    } else {
+      if (results.length > 0) {
+        const dias = results[0].days
+        const diasGozados = results[0].daysgozados
+        res.status(200).json({ days: dias, daysgozados: diasGozados })
+      } else {
+        res.status(404).json({ error: 'Días de vacaciones no encontrados' })
+      }
+    }
+  });
+});
 // Ruta para obtener los días de vacaciones restantes y días gozados
-router.get('/api/diasvacaciones', (req, res) => {
-  const sql = 'SELECT days, daysgozados FROM diasvacaciones';
-  connection.query(sql, (error, results) => {
+router.get('/api/diasvacaciones/:iduser', (req, res) => {
+  const idUser = req.params.iduser;
+
+  // Realizar la consulta en la base de datos para obtener la suma de los días de vacaciones disponibles y gozados del usuario específico
+  const query = `SELECT SUM(days) AS totalDays, SUM(daysgozados) AS totalDaysGozados FROM diasvacaciones WHERE iduser = ?`;
+  connection.query(query, [idUser], (error, results) => {
     if (error) {
       console.error('Error al obtener los días de vacaciones:', error);
       res.status(500).json({ error: 'Error al obtener los días de vacaciones' });
     } else {
-      res.json(results[0]); // Suponiendo que solo hay un registro en la tabla
+      if (results.length > 0) {
+        const totalDias = results[0].totalDays;
+        const totalDiasGozados = results[0].totalDaysGozados;
+        res.status(200).json({ days: totalDias, daysgozados: totalDiasGozados });
+      } else {
+        res.status(404).json({ error: 'Días de vacaciones no encontrados' });
+      }
     }
   });
 });
+
 // Ruta para enviar una solicitud de vacaciones
 router.post('/api/vacaciones', (req, res) => {
   const { iduser, diasvacaciones, fechainicio, fechafinal } = req.body;
@@ -68,7 +97,6 @@ router.post('/api/vacaciones', (req, res) => {
     }
   });
 });
-
 // Ruta para actualizar los días disponibles y los días gozados en la tabla de diasvacaciones
 router.put('/api/diasvacaciones/actualizar', (req, res) => {
   const daysGozados = req.body.daysgozados;
@@ -102,7 +130,6 @@ router.put('/api/diasvacaciones/actualizar', (req, res) => {
     });
   });
 });
-
 router.get("/api/requests", (req, res) => {
   const sql = "SELECT * FROM vacaciones WHERE solicitud IS NULL OR solicitud = ''";
   connection.query(sql, (err, results) => {
@@ -114,7 +141,6 @@ router.get("/api/requests", (req, res) => {
     }
   });
 });
-
 router.put("/api/requests/:iduser/approve", (req, res) => {
   const { iduser } = req.params;
   const sql = 'UPDATE vacaciones SET solicitud = "aceptada", idmanager = ? WHERE iduser = ?';
@@ -128,7 +154,6 @@ router.put("/api/requests/:iduser/approve", (req, res) => {
     }
   });
 });
-
 router.put("/api/requests/:iduser/reject", (req, res) => {
   const { iduser } = req.params;
   const sql = 'UPDATE vacaciones SET solicitud = "rechazada", idmanager = ? WHERE iduser = ?';
@@ -142,7 +167,6 @@ router.put("/api/requests/:iduser/reject", (req, res) => {
     }
   });
 });
-
 router.post("/api/daysvacations/:iduser/update", (req, res) => {
   const { iduser } = req.params;
   const sqlSelect = "SELECT fechainicio, fechafinal FROM vacaciones WHERE iduser = ?";
@@ -190,6 +214,16 @@ router.get('/mostrarticket', (req, res) => {
     }
   });
 });
+router.get('/filtrarticket', (req, res) => {
+  connection.query('SELECT * FROM ticket', (error, results) => {
+    if (error) {
+      console.error('Error al obtener los datos:', error);
+      res.status(500).json({ error: 'Error al obtener los datos' });
+    } else {
+      res.json(results);
+    }
+  });
+});
 
 router.get('/tablaticket', (req, res) => {
   const iduser = req.headers.authorization
@@ -223,6 +257,38 @@ router.get('/inventario', (req, res) => {
       res.status(500).json({ error: 'Error al obtener los datos' });
     } else {
       res.json(results);
+    }
+  });
+});
+//Mandar mis equipo pero filtrandolo
+router.get('/api/verequipo/:iduser', (req, res) => {
+  const iduser = req.params.iduser;
+  const sql = 'SELECT * FROM inventario JOIN producto ON inventario.idproducto = producto.idproducto WHERE producto.estado = "Nuevo" AND inventario.iduser = ?';
+  connection.query(sql, [iduser], (error, results) => {
+    if (error) {
+      console.error('Error al hacer la consulta', error);
+      res.status(500).json({error: 'Error interno'});
+    } else {
+      res.json(results);
+    }
+  });
+});
+// Ruta para obtener los datos de la tabla users
+router.get('/user/perfil/:iduser', (req, res) => {
+  const iduser = req.params.iduser;
+  const sql = 'SELECT nomempleado, imagen FROM users WHERE iduser = ?';
+
+  connection.query(sql, [iduser], (error, results) => {
+    if (error) {
+      console.error('Error al obtener los datos:', error);
+      res.status(500).json({ error: 'Error al obtener los datos' });
+    } else {
+      if (results.length > 0) {
+        const user = results[0];
+        res.json({ nomempleado: user.nomempleado, imagen: user.imagen });
+      } else {
+        res.status(404).json({ error: 'Usuario no encontrado' });
+      }
     }
   });
 });
@@ -309,12 +375,21 @@ router.post('/insertar/equipo', (req, res) => {
 
 // Ruta para insertar datos
 router.post('/tickets', (req, res) => {
-  const { iduser, nomempleado, nomproblem, tipoticket, descripcion } = req.body;
+  const { iduser, nomempleado, nomproblem, tipoticket, descripcion, equipo } = req.body;
 
   // Insertar el nuevo ticket en la base de datos
-  const sql = `INSERT INTO ticket (iduser, nomempleado, nomproblem, tipoticket, descripcion, fecha_creacion) VALUES (?, ?, ?, ?, ?, CURDATE())`;
+  let sql = '';
+  let values = [];
 
-  connection.query(sql, [iduser, nomempleado, nomproblem, tipoticket, descripcion], (error, result) => {
+  if (tipoticket === 'Soporte') {
+    sql = `INSERT INTO ticket (iduser, nomempleado, nomproblem, tipoticket, descripcion, equipo, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?, CURDATE())`;
+    values = [iduser, nomempleado, nomproblem, tipoticket, descripcion, equipo];
+  } else {
+    sql = `INSERT INTO ticket (iduser, nomempleado, nomproblem, tipoticket, descripcion, fecha_creacion) VALUES (?, ?, ?, ?, ?, CURDATE())`;
+    values = [iduser, nomempleado, nomproblem, tipoticket, descripcion];
+  }
+
+  connection.query(sql, values, (error, result) => {
     if (error) {
       console.error('Error al insertar los datos:', error);
       res.status(500).json({ error: 'Error al insertar los datos' });
@@ -353,6 +428,25 @@ router.get('/user', (req, res) => {
     }
   });
 });
+// Ruta para obtener los datos de la tabla users
+router.get('/user/:nomempleado', (req, res) => {
+  const nomempleado = req.params.nomempleado;
+  const sql = 'SELECT correo FROM users WHERE nomempleado = ?';
+
+  connection.query(sql, [nomempleado], (error, results) => {
+    if (error) {
+      console.error('Error al obtener los datos:', error);
+      res.status(500).json({ error: 'Error al obtener los datos' });
+    } else {
+      if (results.length > 0) {
+        const user = results[0];
+        res.json({ correo: user.correo });
+      } else {
+        res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+    }
+  });
+});
 router.get('/tecnicos', (req, res) => {
   // Obtener los datos de la tabla users y su rol correspondiente mediante JOIN
   const sql = 'SELECT u.iduser, u.nomempleado, r.nomrol FROM users u JOIN rol r ON u.idrol = r.idrol WHERE r.nomrol = "tecnico"';
@@ -380,6 +474,46 @@ router.get('/api/tipoproducto', (req, res) => {
     }
   });
 });
+// Ruta para actualizar un registro por idtipoproducto de la tabla tipoproducto
+router.put('/api/actualizar/tipo/:idtipoproducto', (req, res) => {
+  const idtipoproducto = req.params.idtipoproducto;
+  const { nombreTipo, estadoTipo} = req.body;
+
+  // Consulta SQL para actualizar el estado del ticket
+  const sql = 'UPDATE tipoproducto SET nombretipo = ?, estadotipo = ? WHERE idtipoproducto = ?';
+
+  // Ejecutar la consulta con los parámetros estado e idproblem
+  connection.query(sql, [nombreTipo, estadoTipo, idtipoproducto], (err, result) => {
+    if (err) {
+      console.error('Error al actualizar el registro: ', err);
+      res.status(500).json({ error: 'Error al actualizar el registro' });
+    } else {
+      if (result.affectedRows === 1) {
+        // El registro se actualizó correctamente
+        res.json({ message: 'El registro se actualizó correctamente' });
+      } else {
+        // No se encontró el registro con el idproblem especificado
+        res.status(404).json({ error: 'No se encontró el registro con el idmarca especificado' });
+      }
+    }
+  });
+});
+// Ruta para eliminar un registro por idtipoproducto de la tabla tipoproducto
+router.delete('/api/eliminar/tipo/:idtipoproducto', (req, res) => {
+  const idtipoproducto = req.params.idtipoproducto;
+
+  // Ejecutar la consulta SQL para eliminar el dato de la tabla "modelo" con el ID proporcionado
+  const sql = `DELETE FROM tipoproducto WHERE idtipoproducto = ${idtipoproducto}`;
+
+  connection.query(sql, (error, results) => {
+    if (error) {
+      console.error('Error al eliminar el modelo:', error);
+      res.status(500).json({ message: 'Error al eliminar una marca' });
+    } else {
+      res.status(200).json({ message: 'Marca eliminado correctamente' });
+    }
+  });
+});
 // Ruta para obtener los datos de la tabla de Modelo
 router.get('/api/modelo', (req, res) => {
   const sql = 'SELECT * FROM modelo';
@@ -390,6 +524,61 @@ router.get('/api/modelo', (req, res) => {
       res.status(500).json({ error: 'Error al obtener los datos' });
     } else {
       res.json(results);
+    }
+  });
+});
+// Ruta para actualizar un registro por idmodelo
+router.put('/api/actualizar/modelo/:idmodelo', (req, res) => {
+  const idmodelo = req.params.idmodelo;
+  const { nombreModelo, estadoModelo } = req.body;
+
+  // Consulta SQL para actualizar el estado del ticket
+  const sql = 'UPDATE modelo SET nombremodelo = ?, estadomodelo = ? WHERE idmodelo = ?';
+
+  // Ejecutar la consulta con los parámetros estado e idproblem
+  connection.query(sql, [nombreModelo, estadoModelo, idmodelo], (err, result) => {
+    if (err) {
+      console.error('Error al actualizar el registro: ', err);
+      res.status(500).json({ error: 'Error al actualizar el registro' });
+    } else {
+      if (result.affectedRows === 1) {
+        // El registro se actualizó correctamente
+        res.json({ message: 'El registro se actualizó correctamente' });
+      } else {
+        // No se encontró el registro con el idproblem especificado
+        res.status(404).json({ error: 'No se encontró el registro con el idmodelo especificado' });
+      }
+    }
+  });
+});
+router.delete('/api/eliminar/modelo/:idmodelo', (req, res) => {
+  const idmodelo = req.params.idmodelo;
+
+  // Ejecutar la consulta SQL para eliminar el dato de la tabla "modelo" con el ID proporcionado
+  const sql = `DELETE FROM modelo WHERE idmodelo = ${idmodelo}`;
+
+  connection.query(sql, (error, results) => {
+    if (error) {
+      console.error('Error al eliminar el modelo:', error);
+      res.status(500).json({ message: 'Error al eliminar el modelo' });
+    } else {
+      res.status(200).json({ message: 'Modelo eliminado correctamente' });
+    }
+  });
+});
+// Ruta para eliminar un registro por idtipoproducto de la tabla tipoproducto
+router.delete('/api/eliminar/producto/:idproducto', (req, res) => {
+  const idproducto = req.params.idproducto;
+
+  // Ejecutar la consulta SQL para eliminar el dato de la tabla "modelo" con el ID proporcionado
+  const sql = `DELETE FROM producto WHERE idproducto = ${idproducto}`;
+
+  connection.query(sql, (error, results) => {
+    if (error) {
+      console.error('Error al eliminar el producto:', error);
+      res.status(500).json({ message: 'Error al eliminar un producto' });
+    } else {
+      res.status(200).json({ message: 'Producto eliminado correctamente' });
     }
   });
 });
@@ -460,6 +649,30 @@ router.put('/estado/:idproblem', (req, res) => {
     }
   });
 });
+// Ruta para actualizar un registro por idtipoproducto de la tabla tipoproducto
+router.put('/api/perfil/:iduser', (req, res) => {
+  const iduser = req.params.iduser;
+  const { nomempleado, apellidoempleado, telempleado } = req.body;
+
+  // Consulta SQL para actualizar el perfil con la imagen de perfil
+  const sql = 'UPDATE users SET nomempleado = ?, apellidoempleado = ?, telempleado = ? WHERE iduser = ?';
+
+  // Ejecutar la consulta con los parámetros actualizados
+  connection.query(sql, [nomempleado, apellidoempleado, telempleado, iduser], (err, result) => {
+    if (err) {
+      console.error('Error al actualizar el perfil: ', err);
+      res.status(500).json({ error: 'Error al actualizar el perfil' });
+    } else {
+      if (result.affectedRows === 1) {
+        // El perfil se actualizó correctamente
+        res.json({ message: 'El perfil se actualizó correctamente' });
+      } else {
+        // No se encontró el perfil con el iduser especificado
+        res.status(404).json({ error: 'No se encontró el perfil con el iduser especificado' });
+      }
+    }
+  });
+}); 
 
 //Ruta para actualizar mi Ticket
 router.put('/actualizar/:idproblem', (req, res) => {
@@ -505,6 +718,23 @@ router.put('/estado/actualizar/:idproblem', (req, res) => {
       } else {
         // No se encontró el registro con el idproblem especificado en la tabla de tickets
         res.status(404).json({ error: 'No se encontró el registro con el idproblem especificado en la tabla de tickets' });
+      }
+    }
+  });
+});
+// Ruta para obtener el campo "cargo" de un usuario por su correo
+router.get('/api/user/:correo/cargo', (req, res) => {
+  const userCorreo = req.params.correo;
+  const query = "SELECT cargo FROM users WHERE correo = ?";
+
+  connection.query(query, [userCorreo], (err, result) => {
+    if (err) {
+      res.status(500).send(err);
+    } else {
+      if (result.length > 0) {
+        res.json({ cargo: result[0].cargo });
+      } else {
+        res.status(404).send('Usuario no encontrado');
       }
     }
   });

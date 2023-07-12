@@ -2,7 +2,7 @@ const mysql = require('mysql');
 
 //Credencilaes de mi base de datos
 const connection = mysql.createConnection({
-    host: '35.226.160.155',
+    host: '10.54.128.2',
     user: 'root',
     password: 'UmCYXM9=J=C}jh7+',
     database: 'kinqoenergy',
