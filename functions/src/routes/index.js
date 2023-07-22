@@ -292,6 +292,21 @@ router.get('/user/perfil/:iduser', (req, res) => {
     }
   });
 });
+//Ruta para insertar datos a mi tabla user
+router.post('/insertar/users', (req, res) => {
+  const { nomempleado, apellidoempleado, cargo, telempleado, correo, pais, sede, idrol, password, estado } = req.body;
+
+  const sql = `INSERT INTO users ( nomempleado, apellidoempleado, cargo, telempleado, correo, pais, sede, idrol, password, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+  connection.query(sql, [nomempleado, apellidoempleado, cargo, telempleado, correo, pais, sede, idrol, password, estado], (error, results) => {
+    if (error) {
+      console.error('Error al insertar mis datos', error);
+      res.status(500).json({error: 'Error al insertar los datos'});
+    } else {
+      res.send('Datos insertados correctamente');
+    }
+  });
+});
 
 //Ruta para insertar datos a mi tabla inventario
 router.post('/inventario/asignar', (req, res) => {
@@ -410,6 +425,30 @@ router.get('/tipotickets', (req, res) => {
       res.status(500).json({ error: 'Error al obtener los datos' });
     } else {
       res.json(results);
+    }
+  });
+});
+// Ruta para actualizar un registro por idproducto de la tabla producto
+router.put('/api/actualizar/equipo/:idproducto', (req, res) => {
+  const idproducto = req.params.idproducto;
+  const { nomproducts, tipoproductos, marca, modelo, estados, especificacioness} = req.body;
+
+  // Consulta SQL para actualizar el estado del ticket
+  const sql = 'UPDATE producto SET nomproduct = ?, tipoproductos = ?, marca = ?, modelo = ?, estado = ?, especificaciones = ? WHERE idproducto = ?';
+
+  // Ejecutar la consulta con los parámetros estado e idproblem
+  connection.query(sql, [nomproducts, tipoproductos, marca, modelo, estados, especificacioness, idproducto], (err, result) => {
+    if (err) {
+      console.error('Error al actualizar el registro: ', err);
+      res.status(500).json({ error: 'Error al actualizar el registro' });
+    } else {
+      if (result.affectedRows === 1) {
+        // El registro se actualizó correctamente
+        res.json({ message: 'El registro se actualizó correctamente' });
+      } else {
+        // No se encontró el registro con el idproblem especificado
+        res.status(404).json({ error: 'No se encontró el registro con el idproducto especificado' });
+      }
     }
   });
 });
